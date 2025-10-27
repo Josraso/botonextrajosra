@@ -1,0 +1,50 @@
+/**
+ * Estilos del Botón Extra Josra
+ */
+
+.botonextrajosra-wrapper {
+    margin: 8px 0;
+    text-align: center;
+}
+
+.botonextrajosra-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.botonextrajosra-button:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.botonextrajosra-button i {
+    font-size: 18px;
+}
+
+/* Adaptación para diferentes themes */
+.product-miniature .botonextrajosra-wrapper {
+    margin-top: 10px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .botonextrajosra-button {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+    
+    .botonextrajosra-button i {
+        font-size: 16px;
+    }
+}
