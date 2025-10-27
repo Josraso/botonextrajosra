@@ -13,6 +13,12 @@ if (!defined('_PS_VERSION_')) {
 
 class BotonExtraJosra extends Module
 {
+    /**
+     * Cache para mejorar rendimiento
+     */
+    protected $hasAttributesCache = [];
+    protected $productCategoriesCache = [];
+
     public function __construct()
     {
         $this->name = 'botonextrajosra';
@@ -42,6 +48,7 @@ class BotonExtraJosra extends Module
         Configuration::updateValue('BOTONEXTRAJOSRA_CATEGORIES', json_encode([]));
         Configuration::updateValue('BOTONEXTRAJOSRA_PRODUCTS', json_encode([]));
         Configuration::updateValue('BOTONEXTRAJOSRA_MODE', 'categories'); // categories, products, all
+        Configuration::updateValue('BOTONEXTRAJOSRA_CUSTOM_HOOK', ''); // Hook personalizado
 
         return parent::install()
             && $this->registerHook('displayProductListReviews')
@@ -49,6 +56,7 @@ class BotonExtraJosra extends Module
             && $this->registerHook('displayProductListFunctionalButtons')
             && $this->registerHook('displayAfterProductThumb')
             && $this->registerHook('displayProductAdditionalInfo')
+            && $this->registerHook('actionBotonExtraJosraDisplay')
             && $this->registerHook('header');
     }
 
@@ -60,6 +68,7 @@ class BotonExtraJosra extends Module
         Configuration::deleteByName('BOTONEXTRAJOSRA_CATEGORIES');
         Configuration::deleteByName('BOTONEXTRAJOSRA_PRODUCTS');
         Configuration::deleteByName('BOTONEXTRAJOSRA_MODE');
+        Configuration::deleteByName('BOTONEXTRAJOSRA_CUSTOM_HOOK');
 
         return parent::uninstall();
     }
@@ -86,25 +95,57 @@ class BotonExtraJosra extends Module
      */
     protected function postProcess()
     {
+        // Validar y sanitizar activo
         Configuration::updateValue('BOTONEXTRAJOSRA_ACTIVE', (int)Tools::getValue('BOTONEXTRAJOSRA_ACTIVE'));
-        Configuration::updateValue('BOTONEXTRAJOSRA_TEXT', Tools::getValue('BOTONEXTRAJOSRA_TEXT'));
-        Configuration::updateValue('BOTONEXTRAJOSRA_HOOK', Tools::getValue('BOTONEXTRAJOSRA_HOOK'));
-        Configuration::updateValue('BOTONEXTRAJOSRA_MODE', Tools::getValue('BOTONEXTRAJOSRA_MODE'));
-        
-        // Categorías
+
+        // Validar y sanitizar texto del botón - prevenir XSS
+        $buttonText = Tools::getValue('BOTONEXTRAJOSRA_TEXT');
+        $buttonText = strip_tags($buttonText); // Remover HTML
+        $buttonText = Tools::substr($buttonText, 0, 100); // Limitar longitud
+        Configuration::updateValue('BOTONEXTRAJOSRA_TEXT', pSQL($buttonText));
+
+        // Validar hook - solo valores permitidos
+        $allowedHooks = [
+            'displayProductListReviews',
+            'displayProductPriceBlock',
+            'displayProductListFunctionalButtons',
+            'displayAfterProductThumb',
+            'displayProductAdditionalInfo'
+        ];
+        $hook = Tools::getValue('BOTONEXTRAJOSRA_HOOK');
+        if (in_array($hook, $allowedHooks, true)) {
+            Configuration::updateValue('BOTONEXTRAJOSRA_HOOK', pSQL($hook));
+        }
+
+        // Validar modo - solo valores permitidos
+        $allowedModes = ['all', 'categories', 'products'];
+        $mode = Tools::getValue('BOTONEXTRAJOSRA_MODE');
+        if (in_array($mode, $allowedModes, true)) {
+            Configuration::updateValue('BOTONEXTRAJOSRA_MODE', pSQL($mode));
+        }
+
+        // Categorías - validar que sean enteros
         $categories = Tools::getValue('BOTONEXTRAJOSRA_CATEGORIES');
         if ($categories && is_array($categories)) {
-            Configuration::updateValue('BOTONEXTRAJOSRA_CATEGORIES', json_encode($categories));
+            // Filtrar y validar que sean números enteros
+            $categories = array_map('intval', array_filter($categories, 'is_numeric'));
+            $categories = array_filter($categories, function($id) {
+                return $id > 0; // Solo IDs válidos
+            });
+            Configuration::updateValue('BOTONEXTRAJOSRA_CATEGORIES', json_encode(array_values($categories)));
         } else {
             Configuration::updateValue('BOTONEXTRAJOSRA_CATEGORIES', json_encode([]));
         }
 
-        // Productos (desde el campo de texto)
+        // Productos - validar que sean enteros
         $products = Tools::getValue('BOTONEXTRAJOSRA_PRODUCTS');
         if ($products) {
             $productIds = array_map('trim', explode(',', $products));
-            $productIds = array_filter($productIds, 'is_numeric');
-            Configuration::updateValue('BOTONEXTRAJOSRA_PRODUCTS', json_encode($productIds));
+            $productIds = array_map('intval', array_filter($productIds, 'is_numeric'));
+            $productIds = array_filter($productIds, function($id) {
+                return $id > 0; // Solo IDs válidos
+            });
+            Configuration::updateValue('BOTONEXTRAJOSRA_PRODUCTS', json_encode(array_values($productIds)));
         } else {
             Configuration::updateValue('BOTONEXTRAJOSRA_PRODUCTS', json_encode([]));
         }
@@ -252,23 +293,32 @@ class BotonExtraJosra extends Module
      */
     protected function getAllCategoriesFormatted()
     {
-        $sql = 'SELECT c.id_category, cl.name, c.level_depth
-                FROM ' . _DB_PREFIX_ . 'category c
-                LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl 
-                    ON (c.id_category = cl.id_category AND cl.id_lang = ' . (int)$this->context->language->id . ')
-                WHERE c.active = 1
-                ORDER BY c.nleft ASC';
-
-        $categories = Db::getInstance()->executeS($sql);
         $result = [];
 
-        if ($categories) {
-            foreach ($categories as $category) {
-                $result[] = [
-                    'id' => (int)$category['id_category'],
-                    'name' => str_repeat('— ', (int)$category['level_depth']) . $category['name']
-                ];
+        try {
+            $sql = 'SELECT c.id_category, cl.name, c.level_depth
+                    FROM ' . _DB_PREFIX_ . 'category c
+                    LEFT JOIN ' . _DB_PREFIX_ . 'category_lang cl
+                        ON (c.id_category = cl.id_category AND cl.id_lang = ' . (int)$this->context->language->id . ')
+                    WHERE c.active = 1
+                    ORDER BY c.nleft ASC';
+
+            $categories = Db::getInstance()->executeS($sql);
+
+            if ($categories && is_array($categories)) {
+                foreach ($categories as $category) {
+                    if (isset($category['id_category'], $category['name'])) {
+                        $result[] = [
+                            'id' => (int)$category['id_category'],
+                            'name' => str_repeat('— ', (int)$category['level_depth']) . $category['name']
+                        ];
+                    }
+                }
             }
+        } catch (PrestaShopDatabaseException $e) {
+            // En caso de error, devolver array vacío
+            // Opcionalmente se podría loguear el error
+            $result = [];
         }
 
         return $result;
@@ -293,6 +343,47 @@ class BotonExtraJosra extends Module
     }
 
     /**
+     * Verificar si un producto tiene combinaciones (con caché)
+     */
+    protected function productHasAttributes($productId)
+    {
+        $productId = (int)$productId;
+
+        if (!isset($this->hasAttributesCache[$productId])) {
+            try {
+                $sql = 'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'product_attribute`
+                        WHERE `id_product` = ' . $productId;
+                $result = Db::getInstance()->getValue($sql);
+                $this->hasAttributesCache[$productId] = (int)$result > 0;
+            } catch (PrestaShopDatabaseException $e) {
+                // En caso de error, asumimos que no tiene combinaciones
+                $this->hasAttributesCache[$productId] = false;
+            }
+        }
+
+        return $this->hasAttributesCache[$productId];
+    }
+
+    /**
+     * Obtener categorías de un producto (con caché)
+     */
+    protected function getProductCategories($productId)
+    {
+        $productId = (int)$productId;
+
+        if (!isset($this->productCategoriesCache[$productId])) {
+            try {
+                $this->productCategoriesCache[$productId] = Product::getProductCategories($productId);
+            } catch (Exception $e) {
+                // En caso de error, devolvemos array vacío
+                $this->productCategoriesCache[$productId] = [];
+            }
+        }
+
+        return $this->productCategoriesCache[$productId];
+    }
+
+    /**
      * Verificar si debe mostrar el botón para este producto
      */
     protected function shouldShowButton($product)
@@ -309,10 +400,8 @@ class BotonExtraJosra extends Module
         } elseif (isset($product['attributes'])) {
             $hasAttributes = !empty($product['attributes']);
         } else {
-            // Verificar directamente en BD
-            $sql = 'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'product_attribute` 
-                    WHERE `id_product` = ' . (int)$product['id_product'];
-            $hasAttributes = (int)Db::getInstance()->getValue($sql) > 0;
+            // Verificar con caché
+            $hasAttributes = $this->productHasAttributes($product['id_product']);
         }
 
         if (!$hasAttributes) {
@@ -333,9 +422,9 @@ class BotonExtraJosra extends Module
                 return false;
             }
 
-            // Obtener categorías del producto
-            $productCategories = Product::getProductCategories($product['id_product']);
-            
+            // Obtener categorías del producto con caché
+            $productCategories = $this->getProductCategories($product['id_product']);
+
             // Verificar intersección
             return !empty(array_intersect($selectedCategories, $productCategories));
         }
@@ -460,6 +549,26 @@ class BotonExtraJosra extends Module
             return '';
         }
 
+        if (!isset($params['product'])) {
+            return '';
+        }
+
+        if (!$this->shouldShowButton($params['product'])) {
+            return '';
+        }
+
+        return $this->renderButton($params['product']);
+    }
+
+    /**
+     * Hook: actionBotonExtraJosraDisplay
+     * Hook personalizado para mostrar el botón en cualquier lugar del theme
+     *
+     * Uso desde theme/módulo:
+     * {hook h='actionBotonExtraJosraDisplay' product=$product}
+     */
+    public function hookActionBotonExtraJosraDisplay($params)
+    {
         if (!isset($params['product'])) {
             return '';
         }
