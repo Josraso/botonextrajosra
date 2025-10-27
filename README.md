@@ -25,12 +25,10 @@ Desde el backoffice puedes configurar:
 
 - **Activar/Desactivar** el módulo
 - **Texto del botón** (por defecto: "Ver opciones")
-- **Hook de visualización** - Elige dónde mostrar el botón:
-  - `displayProductListReviews` (Recomendado - debajo del precio)
-  - `displayProductPriceBlock` (Zona del precio)
-  - `displayProductListFunctionalButtons` (Zona de botones)
-  - `displayAfterProductThumb` (Después de la imagen)
-  - `displayProductAdditionalInfo` (Info adicional)
+- **Hook de visualización** - Elige dónde mostrar el botón en el listado:
+  - `displayProductListReviews` (Recomendado - después del precio)
+  - `displayProductPriceBlock` (En la zona del precio)
+  - **Hook personalizado** `actionBotonExtraJosraDisplay` (Para colocar donde tú quieras)
 - **Modo de visualización**:
   - Todos los productos con combinaciones
   - Solo productos en categorías seleccionadas

@@ -48,14 +48,10 @@ class BotonExtraJosra extends Module
         Configuration::updateValue('BOTONEXTRAJOSRA_CATEGORIES', json_encode([]));
         Configuration::updateValue('BOTONEXTRAJOSRA_PRODUCTS', json_encode([]));
         Configuration::updateValue('BOTONEXTRAJOSRA_MODE', 'categories'); // categories, products, all
-        Configuration::updateValue('BOTONEXTRAJOSRA_CUSTOM_HOOK', ''); // Hook personalizado
 
         return parent::install()
             && $this->registerHook('displayProductListReviews')
             && $this->registerHook('displayProductPriceBlock')
-            && $this->registerHook('displayProductListFunctionalButtons')
-            && $this->registerHook('displayAfterProductThumb')
-            && $this->registerHook('displayProductAdditionalInfo')
             && $this->registerHook('actionBotonExtraJosraDisplay')
             && $this->registerHook('header');
     }
@@ -68,7 +64,6 @@ class BotonExtraJosra extends Module
         Configuration::deleteByName('BOTONEXTRAJOSRA_CATEGORIES');
         Configuration::deleteByName('BOTONEXTRAJOSRA_PRODUCTS');
         Configuration::deleteByName('BOTONEXTRAJOSRA_MODE');
-        Configuration::deleteByName('BOTONEXTRAJOSRA_CUSTOM_HOOK');
 
         return parent::uninstall();
     }
@@ -104,13 +99,10 @@ class BotonExtraJosra extends Module
         $buttonText = Tools::substr($buttonText, 0, 100); // Limitar longitud
         Configuration::updateValue('BOTONEXTRAJOSRA_TEXT', pSQL($buttonText));
 
-        // Validar hook - solo valores permitidos
+        // Validar hook - solo valores permitidos (hooks de listado de productos)
         $allowedHooks = [
             'displayProductListReviews',
-            'displayProductPriceBlock',
-            'displayProductListFunctionalButtons',
-            'displayAfterProductThumb',
-            'displayProductAdditionalInfo'
+            'displayProductPriceBlock'
         ];
         $hook = Tools::getValue('BOTONEXTRAJOSRA_HOOK');
         if (in_array($hook, $allowedHooks, true)) {
@@ -224,18 +216,26 @@ class BotonExtraJosra extends Module
                         'type' => 'select',
                         'label' => $this->l('Hook a utilizar'),
                         'name' => 'BOTONEXTRAJOSRA_HOOK',
-                        'desc' => $this->l('Selecciona dónde quieres mostrar el botón. Si un hook no funciona en tu theme, prueba con otro.'),
+                        'desc' => $this->l('Selecciona dónde quieres mostrar el botón en el listado de productos. Si un hook no funciona en tu theme, prueba con otro o usa el hook personalizado.'),
                         'options' => [
                             'query' => [
-                                ['id' => 'displayProductListReviews', 'name' => 'displayProductListReviews (Recomendado - Debajo del precio)'],
-                                ['id' => 'displayProductPriceBlock', 'name' => 'displayProductPriceBlock (Zona del precio)'],
-                                ['id' => 'displayProductListFunctionalButtons', 'name' => 'displayProductListFunctionalButtons (Zona de botones)'],
-                                ['id' => 'displayAfterProductThumb', 'name' => 'displayAfterProductThumb (Después de la imagen)'],
-                                ['id' => 'displayProductAdditionalInfo', 'name' => 'displayProductAdditionalInfo (Info adicional)'],
+                                ['id' => 'displayProductListReviews', 'name' => 'displayProductListReviews (Recomendado - Después del precio)'],
+                                ['id' => 'displayProductPriceBlock', 'name' => 'displayProductPriceBlock (En la zona del precio)'],
                             ],
                             'id' => 'id',
                             'name' => 'name'
                         ]
+                    ],
+                    [
+                        'type' => 'html',
+                        'name' => '',
+                        'html_content' => '<div class="alert alert-info">
+                            <strong>' . $this->l('Hook personalizado:') . '</strong><br>
+                            ' . $this->l('Si los hooks anteriores no funcionan en tu theme, puedes usar el hook personalizado') . ' <code>actionBotonExtraJosraDisplay</code><br>
+                            ' . $this->l('Añade esta línea en tu template donde quieras mostrar el botón:') . '<br>
+                            <code>{hook h=\'actionBotonExtraJosraDisplay\' product=$product}</code><br><br>
+                            ' . $this->l('Ejemplo: themes/tu-theme/templates/catalog/_partials/miniatures/product.tpl') . '
+                        </div>'
                     ],
                     [
                         'type' => 'radio',
@@ -486,66 +486,6 @@ class BotonExtraJosra extends Module
     public function hookDisplayProductPriceBlock($params)
     {
         if (Configuration::get('BOTONEXTRAJOSRA_HOOK') !== 'displayProductPriceBlock') {
-            return '';
-        }
-
-        if (!isset($params['product'])) {
-            return '';
-        }
-
-        if (!$this->shouldShowButton($params['product'])) {
-            return '';
-        }
-
-        return $this->renderButton($params['product']);
-    }
-
-    /**
-     * Hook: displayProductListFunctionalButtons
-     */
-    public function hookDisplayProductListFunctionalButtons($params)
-    {
-        if (Configuration::get('BOTONEXTRAJOSRA_HOOK') !== 'displayProductListFunctionalButtons') {
-            return '';
-        }
-
-        if (!isset($params['product'])) {
-            return '';
-        }
-
-        if (!$this->shouldShowButton($params['product'])) {
-            return '';
-        }
-
-        return $this->renderButton($params['product']);
-    }
-
-    /**
-     * Hook: displayAfterProductThumb
-     */
-    public function hookDisplayAfterProductThumb($params)
-    {
-        if (Configuration::get('BOTONEXTRAJOSRA_HOOK') !== 'displayAfterProductThumb') {
-            return '';
-        }
-
-        if (!isset($params['product'])) {
-            return '';
-        }
-
-        if (!$this->shouldShowButton($params['product'])) {
-            return '';
-        }
-
-        return $this->renderButton($params['product']);
-    }
-
-    /**
-     * Hook: displayProductAdditionalInfo
-     */
-    public function hookDisplayProductAdditionalInfo($params)
-    {
-        if (Configuration::get('BOTONEXTRAJOSRA_HOOK') !== 'displayProductAdditionalInfo') {
             return '';
         }
 
