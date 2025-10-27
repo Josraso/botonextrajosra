@@ -102,7 +102,8 @@ class BotonExtraJosra extends Module
         // Validar hook - solo valores permitidos (hooks de listado de productos)
         $allowedHooks = [
             'displayProductListReviews',
-            'displayProductPriceBlock'
+            'displayProductPriceBlock',
+            'actionBotonExtraJosraDisplay'
         ];
         $hook = Tools::getValue('BOTONEXTRAJOSRA_HOOK');
         if (in_array($hook, $allowedHooks, true)) {
@@ -216,11 +217,12 @@ class BotonExtraJosra extends Module
                         'type' => 'select',
                         'label' => $this->l('Hook a utilizar'),
                         'name' => 'BOTONEXTRAJOSRA_HOOK',
-                        'desc' => $this->l('Selecciona dónde quieres mostrar el botón en el listado de productos. Si un hook no funciona en tu theme, prueba con otro o usa el hook personalizado.'),
+                        'desc' => $this->l('Selecciona dónde quieres mostrar el botón en el listado de productos.'),
                         'options' => [
                             'query' => [
                                 ['id' => 'displayProductListReviews', 'name' => 'displayProductListReviews (Recomendado - Después del precio)'],
                                 ['id' => 'displayProductPriceBlock', 'name' => 'displayProductPriceBlock (En la zona del precio)'],
+                                ['id' => 'actionBotonExtraJosraDisplay', 'name' => 'Hook personalizado (Elige tú dónde colocarlo)'],
                             ],
                             'id' => 'id',
                             'name' => 'name'
@@ -230,11 +232,13 @@ class BotonExtraJosra extends Module
                         'type' => 'html',
                         'name' => '',
                         'html_content' => '<div class="alert alert-info">
-                            <strong>' . $this->l('Hook personalizado:') . '</strong><br>
-                            ' . $this->l('Si los hooks anteriores no funcionan en tu theme, puedes usar el hook personalizado') . ' <code>actionBotonExtraJosraDisplay</code><br>
-                            ' . $this->l('Añade esta línea en tu template donde quieras mostrar el botón:') . '<br>
+                            <strong>' . $this->l('¿Cómo usar el Hook personalizado?') . '</strong><br>
+                            ' . $this->l('Si elegiste "Hook personalizado" arriba, debes añadir esta línea en el template de tu listado de productos:') . '<br>
                             <code>{hook h=\'actionBotonExtraJosraDisplay\' product=$product}</code><br><br>
-                            ' . $this->l('Ejemplo: themes/tu-theme/templates/catalog/_partials/miniatures/product.tpl') . '
+                            <strong>' . $this->l('Archivos donde añadirlo (según tu theme):') . '</strong><br>
+                            - themes/tu-theme/templates/catalog/listing/product-list.tpl<br>
+                            - themes/tu-theme/templates/catalog/_partials/miniatures/product.tpl<br><br>
+                            ' . $this->l('Colócalo donde quieras que aparezca el botón dentro del bucle de productos.') . '
                         </div>'
                     ],
                     [

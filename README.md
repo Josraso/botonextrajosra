@@ -25,10 +25,10 @@ Desde el backoffice puedes configurar:
 
 - **Activar/Desactivar** el módulo
 - **Texto del botón** (por defecto: "Ver opciones")
-- **Hook de visualización** - Elige dónde mostrar el botón en el listado:
+- **Hook de visualización** - Elige dónde mostrar el botón:
   - `displayProductListReviews` (Recomendado - después del precio)
   - `displayProductPriceBlock` (En la zona del precio)
-  - **Hook personalizado** `actionBotonExtraJosraDisplay` (Para colocar donde tú quieras)
+  - `Hook personalizado` (Tú eliges dónde colocarlo)
 - **Modo de visualización**:
   - Todos los productos con combinaciones
   - Solo productos en categorías seleccionadas
@@ -38,19 +38,49 @@ Desde el backoffice puedes configurar:
 
 ### ¿Qué es el hook personalizado?
 
-El módulo incluye un hook especial llamado `actionBotonExtraJosraDisplay` que te permite mostrar el botón **en cualquier lugar de tu theme** donde tengas acceso al objeto producto.
+El módulo incluye un hook especial llamado `actionBotonExtraJosraDisplay` que te permite mostrar el botón **en cualquier lugar del listado de productos** de tu theme.
 
 ### ¿Cómo usar el hook personalizado?
 
-#### Opción 1: Desde un archivo .tpl de tu theme
+**IMPORTANTE**: Primero selecciona "Hook personalizado" en la configuración del módulo en el backoffice.
 
-Si estás editando un template de tu theme (por ejemplo, `product-miniature.tpl` o cualquier otro), simplemente añade esta línea donde quieras que aparezca el botón:
+#### Opción 1: Desde los templates de listado de tu theme
+
+Edita uno de estos archivos de tu theme (según donde quieras mostrar el botón):
+- `themes/tu-theme/templates/catalog/listing/product-list.tpl` (Listado principal)
+- `themes/tu-theme/templates/catalog/_partials/miniatures/product.tpl` (Miniatura de producto)
+
+Añade esta línea donde quieras que aparezca el botón:
 
 ```smarty
 {hook h='actionBotonExtraJosraDisplay' product=$product}
 ```
 
-**Ejemplo completo:**
+**Ejemplo completo en product-list.tpl:**
+
+```smarty
+{* En tu archivo themes/tu-theme/templates/catalog/listing/product-list.tpl *}
+
+{foreach from=$products item=product}
+  <article class="product-miniature">
+    <div class="thumbnail">
+      <img src="{$product.cover.small.url}" alt="{$product.name}">
+    </div>
+
+    <div class="product-description">
+      <h3>{$product.name}</h3>
+      <div class="product-price">{$product.price}</div>
+
+      {* AQUÍ COLOCAS EL HOOK PERSONALIZADO *}
+      {hook h='actionBotonExtraJosraDisplay' product=$product}
+
+      <button class="add-to-cart">Añadir al carrito</button>
+    </div>
+  </article>
+{/foreach}
+```
+
+**Ejemplo en miniatures/product.tpl:**
 
 ```smarty
 {* En tu archivo themes/tu-theme/templates/catalog/_partials/miniatures/product.tpl *}
